@@ -1,0 +1,32 @@
+name: Release
+on:
+  release:
+    types: [published]
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Inject dist into release tag and move major tag
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f dist
+          git commit -m "Build dist for $TAG"
+          MAJOR="${TAG%%.*}"
+          git tag -fa "$TAG"   -m "$TAG"
+          git tag -fa "$MAJOR" -m "$MAJOR"
+          git push origin -f "$TAG"
+          git push origin -f "$MAJOR"
