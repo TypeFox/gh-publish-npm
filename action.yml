@@ -1,5 +1,5 @@
 name: 'Publish updated packages'
-description: 'Publish npm packages whose version is newer than the registry, plus optional VS Code extensions to VS Marketplace and Open VSX.'
+description: 'Publish npm packages and VS Code extensions when the local version is newer than what is already published.'
 branding:
   icon: 'upload-cloud'
   color: 'blue'
