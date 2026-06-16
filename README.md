@@ -6,7 +6,7 @@ A GitHub Action that publishes npm packages, VS Code extensions, and Open VSX ex
 
 ```yaml
 - name: Publish
-  uses: TypeFox/publish@v1
+  uses: TypeFox/gh-publish-npm@v1
   with:
     npm-packages: |
       packages/my-lib
@@ -54,6 +54,6 @@ Alternatively, pass an explicit `npm-token` to use token-based authentication.
    - Build `dist/index.js` from source.
    - Force-commit `dist/` into the release tag.
    - Create or move the major tag (e.g. `v1`) to the same commit.
-3. Callers referencing `TypeFox/publish@v1` will pick up the new build automatically.
+3. Callers referencing `TypeFox/gh-publish-npm@v1` will pick up the new build automatically.
 
 The `dist/` directory is git-ignored on `main` — the bundle only ever lives in release tags.
