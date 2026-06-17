@@ -11,15 +11,38 @@ function parseList(input: string): string[] {
     return input.split('\n').map(s => s.trim()).filter(Boolean);
 }
 
+const TRUTHY = new Set(['true', '1', 'yes', 'y', 'on']);
+const FALSY = new Set(['false', '0', 'no', 'n', 'off']);
+
+function parseDryRun(input: string): boolean {
+    const value = input.trim().toLowerCase();
+    if (TRUTHY.has(value)) {
+        return true;
+    }
+    if (!value || FALSY.has(value)) {
+        return false;
+    }
+    core.warning(`Unrecognized dry-run value "${input}"; defaulting to dry-run (no packages will be published).`);
+    return true;
+}
+
 async function run(): Promise<void> {
     const npmPackages = parseList(core.getInput('npm-packages'));
     const vscodePackages = parseList(core.getInput('vscode-packages'));
-    const dryRun = core.getInput('dry-run') === 'true';
+    const dryRun = parseDryRun(core.getInput('dry-run'));
     const npmToken = core.getInput('npm-token') || undefined;
     const vsceToken = core.getInput('vsce-token') || undefined;
     const ovsxToken = core.getInput('ovsx-token') || undefined;
-    const vsceVersion = core.getInput('vsce-version') || 'latest';
-    const ovsxVersion = core.getInput('ovsx-version') || 'latest';
+    const vsceVersion = core.getInput('vsce-version') || 'provided';
+    const ovsxVersion = core.getInput('ovsx-version') || 'provided';
+
+    // Register tokens as masked secrets so they are redacted from all log output,
+    // even if a downstream tool echoes them.
+    for (const token of [npmToken, vsceToken, ovsxToken]) {
+        if (token) {
+            core.setSecret(token);
+        }
+    }
 
     try {
         await publishPackages({ npmPackages, vscodePackages, dryRun, npmToken, vsceToken, ovsxToken, vsceVersion, ovsxVersion });

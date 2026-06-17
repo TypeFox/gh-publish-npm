@@ -56,6 +56,22 @@ export async function publishPackages(opts: PublishOptions): Promise<void> {
     }
 }
 
+/**
+ * Build the argument list for invoking a CLI tool (vsce/ovsx) through npx.
+ *
+ * When `cliVersion` is 'provided' (the default/recommended setting), we run the
+ * version installed in the consuming project's devDependencies via
+ * `npx --no-install`, which never downloads from the registry and fails if the
+ * tool is not installed locally. Any other value falls back to fetching the
+ * requested version on demand (`tool@version`) at the caller's own risk.
+ */
+function npxArgs(tool: 'vsce' | 'ovsx', cliVersion: string, args: string[]): string[] {
+    if (cliVersion === 'provided') {
+        return ['--no-install', tool, ...args];
+    }
+    return [`${tool}@${cliVersion}`, ...args];
+}
+
 async function readPackageJson(packagePath?: string): Promise<Record<string, string>> {
     const filePath = path.join(packagePath ?? '.', 'package.json');
     const content = await fs.promises.readFile(filePath, 'utf-8');
@@ -102,11 +118,11 @@ async function publishPackage(packagePath: string, dryRun: boolean, npmToken?: s
     });
 }
 
-async function publishExtension(packagePath: string, dryRun: boolean, vsceToken?: string, ovsxToken?: string, vsceCliVersion = 'latest', ovsxCliVersion = 'latest'): Promise<boolean> {
+async function publishExtension(packagePath: string, dryRun: boolean, vsceToken?: string, ovsxToken?: string, vsceCliVersion = 'provided', ovsxCliVersion = 'provided'): Promise<boolean> {
     const { name, publisher, version } = await readPackageJson(packagePath);
     const fullName = `${publisher}.${name}`;
-    const vsceVersion = await getVsceVersion(fullName, vsceCliVersion);
-    const ovsxVersion = await getOvsxVersion(fullName, ovsxCliVersion);
+    const vsceVersion = await getVsceVersion(fullName, packagePath, vsceCliVersion);
+    const ovsxVersion = await getOvsxVersion(fullName, packagePath, ovsxCliVersion);
     const shouldPublishVsce = compare(version, vsceVersion) === 1;
     const shouldPublishOvsx = compare(version, ovsxVersion) === 1;
     const fileName = `${name}-${version}.vsix`;
@@ -115,7 +131,7 @@ async function publishExtension(packagePath: string, dryRun: boolean, vsceToken?
         console.log(`Extension ${fullName} has updates. Generating vsix...`);
         if (!dryRun) {
             // npx.cmd is needed on Windows; out of scope (publishes on ubuntu-latest)
-            execFileSync('npx', [`vsce@${vsceCliVersion}`, 'package', '-o', fileName], { cwd: packagePath });
+            execFileSync('npx', npxArgs('vsce', vsceCliVersion, ['package', '-o', fileName]), { cwd: packagePath });
         }
     }
 
@@ -136,9 +152,9 @@ async function publishExtension(packagePath: string, dryRun: boolean, vsceToken?
     return shouldPublishVsce || shouldPublishOvsx;
 }
 
-async function getVsceVersion(id: string, cliVersion = 'latest'): Promise<string> {
+async function getVsceVersion(id: string, packagePath: string, cliVersion = 'provided'): Promise<string> {
     return new Promise((resolve, reject) => {
-        execFile('npx', [`vsce@${cliVersion}`, 'show', id, '--json'], (error, stdout) => {
+        execFile('npx', npxArgs('vsce', cliVersion, ['show', id, '--json']), { cwd: packagePath }, (error, stdout) => {
             if (error) {
                 reject(error);
                 return;
@@ -149,14 +165,20 @@ async function getVsceVersion(id: string, cliVersion = 'latest'): Promise<string
     });
 }
 
-async function publishVsce(packagePath: string, fileName: string, dryRun: boolean, token?: string, cliVersion = 'latest'): Promise<void> {
+async function publishVsce(packagePath: string, fileName: string, dryRun: boolean, token?: string, cliVersion = 'provided'): Promise<void> {
     return new Promise((resolve, reject) => {
         if (dryRun) {
             console.log(`[Dry Run] Would publish VSCE extension at ${packagePath}`);
             resolve();
             return;
         }
-        execFile('npx', [`vsce@${cliVersion}`, 'publish', fileName, '-p', token!], { cwd: packagePath }, (error, stdout) => {
+        // Pass the token via VSCE_PAT instead of argv so it never appears in
+        // process listings or in execFile's error message on failure.
+        const env = { ...process.env };
+        if (token) {
+            env.VSCE_PAT = token;
+        }
+        execFile('npx', npxArgs('vsce', cliVersion, ['publish', fileName]), { cwd: packagePath, env }, (error, stdout) => {
             if (error) {
                 reject(error);
                 return;
@@ -167,9 +189,9 @@ async function publishVsce(packagePath: string, fileName: string, dryRun: boolea
     });
 }
 
-async function getOvsxVersion(id: string, cliVersion = 'latest'): Promise<string> {
+async function getOvsxVersion(id: string, packagePath: string, cliVersion = 'provided'): Promise<string> {
     return new Promise((resolve, reject) => {
-        execFile('npx', [`ovsx@${cliVersion}`, 'get', id, '--metadata'], (error, stdout) => {
+        execFile('npx', npxArgs('ovsx', cliVersion, ['get', id, '--metadata']), { cwd: packagePath }, (error, stdout) => {
             if (error) {
                 reject(error);
                 return;
@@ -180,14 +202,20 @@ async function getOvsxVersion(id: string, cliVersion = 'latest'): Promise<string
     });
 }
 
-async function publishOvsx(packagePath: string, fileName: string, dryRun: boolean, token?: string, cliVersion = 'latest'): Promise<void> {
+async function publishOvsx(packagePath: string, fileName: string, dryRun: boolean, token?: string, cliVersion = 'provided'): Promise<void> {
     return new Promise((resolve, reject) => {
         if (dryRun) {
             console.log(`[Dry Run] Would publish OVSX extension at ${packagePath}`);
             resolve();
             return;
         }
-        execFile('npx', [`ovsx@${cliVersion}`, 'publish', fileName, '-p', token!], { cwd: packagePath }, (error, stdout) => {
+        // Pass the token via OVSX_PAT instead of argv so it never appears in
+        // process listings or in execFile's error message on failure.
+        const env = { ...process.env };
+        if (token) {
+            env.OVSX_PAT = token;
+        }
+        execFile('npx', npxArgs('ovsx', cliVersion, ['publish', fileName]), { cwd: packagePath, env }, (error, stdout) => {
             if (error) {
                 reject(error);
                 return;

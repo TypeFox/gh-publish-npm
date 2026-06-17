@@ -26,17 +26,25 @@ inputs:
     required: false
     default: ''
   ovsx-token:
-    description: 'Open VSX access token.'
+    description: 'Open VSX (ovsx) personal access token.'
     required: false
     default: ''
   vsce-version:
-    description: 'Version of the vsce CLI to use (e.g. "1.2.3" or "latest").'
+    description: >-
+      Version of the vsce CLI to use. "provided" (default, recommended) runs the
+      version installed in the project's devDependencies and fails if none is
+      present. Any other value (e.g. "1.2.3" or "latest") is fetched on demand
+      via npx at your own risk.
     required: false
-    default: 'latest'
+    default: 'provided'
   ovsx-version:
-    description: 'Version of the ovsx CLI to use (e.g. "1.2.3" or "latest").'
+    description: >-
+      Version of the ovsx CLI to use. "provided" (default, recommended) runs the
+      version installed in the project's devDependencies and fails if none is
+      present. Any other value (e.g. "1.2.3" or "latest") is fetched on demand
+      via npx at your own risk.
     required: false
-    default: 'latest'
+    default: 'provided'
 
 runs:
   using: 'node20'
