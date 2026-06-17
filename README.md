@@ -6,6 +6,7 @@ A GitHub Action that publishes npm packages, VS Code extensions, and Open VSX ex
 
 ```yaml
 - name: Publish
+  # Pin the version to a full commit SHA for supply-chain safety
   uses: TypeFox/gh-publish-npm@v1
   with:
     npm-packages: |
@@ -27,8 +28,8 @@ A GitHub Action that publishes npm packages, VS Code extensions, and Open VSX ex
 | `npm-token` | No | `''` | npm auth token. Leave empty to use OIDC trusted publishing with `--provenance`. |
 | `vsce-token` | No | `''` | VS Marketplace personal access token. |
 | `ovsx-token` | No | `''` | Open VSX access token. |
-| `vsce-version` | No | `latest` | Version of the vsce CLI to use (e.g. `"3.9.1"` or `"latest"`). |
-| `ovsx-version` | No | `latest` | Version of the ovsx CLI to use (e.g. `"0.10.12"` or `"latest"`). |
+| `vsce-version` | No | `provided` | Version of the vsce CLI to use. `provided` (recommended) runs the version from the project's devDependencies and fails if absent. Any other value (e.g. `"3.9.1"` or `"latest"`) is fetched on demand via `npx` at your own risk. |
+| `ovsx-version` | No | `provided` | Version of the ovsx CLI to use. `provided` (recommended) runs the version from the project's devDependencies and fails if absent. Any other value (e.g. `"1.0.1"` or `"latest"`) is fetched on demand via `npx` at your own risk. |
 
 ## NPM authentication
 
@@ -45,7 +46,7 @@ Alternatively, pass an explicit `npm-token` to use token-based authentication.
 
 - Node.js must already be set up in the job (e.g. via `actions/setup-node`).
 - For npm publishing with `--provenance`, `setup-node` should include `registry-url: 'https://registry.npmjs.org'`.
-- `vsce` and `ovsx` are invoked via `npx` at action runtime — they do not need to be pre-installed, but they must be available to `npx` (i.e. either as devDependencies installed via `npm ci`, or downloaded on demand by npx).
+- With the default `vsce-version: provided` / `ovsx-version: provided`, `vsce` and `ovsx` must be installed in the project's `devDependencies` (and present via `npm ci`). The action runs the locally installed versions and **fails if they are not installed** — it never downloads them from the registry. This is the recommended, supply-chain-safe setting. Only set an explicit version (e.g. `latest`) if you accept the risk of fetching the CLI on demand via `npx`.
 
 ## Releasing a new version
 
