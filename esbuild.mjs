@@ -9,7 +9,7 @@ const ctx = await esbuild.context({
     entryPoints: [path.join(dir, 'src/index.ts')],
     outfile: path.join(dir, 'dist/index.cjs'),
     bundle: true,
-    target: 'node20',
+    target: 'node24',
     format: 'cjs',
     loader: { '.ts': 'ts' },
     platform: 'node',
