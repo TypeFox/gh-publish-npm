@@ -7,7 +7,7 @@ const dir = path.dirname(fileURLToPath(import.meta.url));
 
 const ctx = await esbuild.context({
     entryPoints: [path.join(dir, 'src/index.ts')],
-    outfile: path.join(dir, 'dist/index.js'),
+    outfile: path.join(dir, 'dist/index.cjs'),
     bundle: true,
     target: 'node20',
     format: 'cjs',
