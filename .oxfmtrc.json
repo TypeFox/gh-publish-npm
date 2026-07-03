@@ -1,0 +1,20 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "singleQuote": true,
+  "ignorePatterns": ["**/dist/**/*", "**/node_modules/**/*", "README.md"],
+  "endOfLine": "lf",
+  "trailingComma": "none",
+  "insertFinalNewline": true,
+  "sortPackageJson": true,
+  "tabWidth": 4,
+  "printWidth": 140,
+  "overrides": [
+    {
+      "files": ["*.json", "*.yml", "*.yaml", "*.md"],
+      "options": {
+        "printWidth": 80,
+        "tabWidth": 2
+      }
+    }
+  ]
+}

@@ -1,3 +1,5 @@
 [tools]
 node = "24"
 npm = "11"
+oxlint = "1.72.0"
+oxfmt = "0.57.0"
