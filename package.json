@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "build": "node esbuild.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "watch": "tsc --noEmit --watch"
   },
   "dependencies": {
     "@actions/core": "^3.0.1",

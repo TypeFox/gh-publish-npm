@@ -2,7 +2,7 @@
  * Copyright 2026 TypeFox GmbH
  * This program and the accompanying materials are made available under the
  * terms of the MIT License, which is available in the project root.
-******************************************************************************/
+ ******************************************************************************/
 
 import * as core from '@actions/core';
 import { publishPackages } from './publish.js';
@@ -30,6 +30,7 @@ async function run(): Promise<void> {
     const npmPackages = parseList(core.getInput('npm-packages'));
     const vscodePackages = parseList(core.getInput('vscode-packages'));
     const dryRun = parseDryRun(core.getInput('dry-run'));
+    const npmTag = core.getInput('npm-tag') || undefined;
     const npmToken = core.getInput('npm-token') || undefined;
     const vsceToken = core.getInput('vsce-token') || undefined;
     const ovsxToken = core.getInput('ovsx-token') || undefined;
