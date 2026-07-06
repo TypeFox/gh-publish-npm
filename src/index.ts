@@ -2,13 +2,16 @@
  * Copyright 2026 TypeFox GmbH
  * This program and the accompanying materials are made available under the
  * terms of the MIT License, which is available in the project root.
-******************************************************************************/
+ ******************************************************************************/
 
 import * as core from '@actions/core';
-import { publishPackages } from './publish.js';
+import { PublishOptions, publishPackages } from './publish.js';
 
 function parseList(input: string): string[] {
-    return input.split('\n').map(s => s.trim()).filter(Boolean);
+    return input
+        .split('\n')
+        .map((s) => s.trim())
+        .filter(Boolean);
 }
 
 const TRUTHY = new Set(['true', '1', 'yes', 'y', 'on']);
@@ -27,25 +30,28 @@ function parseDryRun(input: string): boolean {
 }
 
 async function run(): Promise<void> {
-    const npmPackages = parseList(core.getInput('npm-packages'));
-    const vscodePackages = parseList(core.getInput('vscode-packages'));
-    const dryRun = parseDryRun(core.getInput('dry-run'));
-    const npmToken = core.getInput('npm-token') || undefined;
-    const vsceToken = core.getInput('vsce-token') || undefined;
-    const ovsxToken = core.getInput('ovsx-token') || undefined;
-    const vsceVersion = core.getInput('vsce-version') || 'provided';
-    const ovsxVersion = core.getInput('ovsx-version') || 'provided';
+    const publishOptions: PublishOptions = {
+        npmPackages: parseList(core.getInput('npm-packages')),
+        vscodePackages: parseList(core.getInput('vscode-packages')),
+        dryRun: parseDryRun(core.getInput('dry-run')),
+        npmTag: core.getInput('npm-tag') || undefined,
+        npmToken: core.getInput('npm-token') || undefined,
+        vsceToken: core.getInput('vsce-token') || undefined,
+        ovsxToken: core.getInput('ovsx-token') || undefined,
+        vsceVersion: core.getInput('vsce-version') || 'provided',
+        ovsxVersion: core.getInput('ovsx-version') || 'provided'
+    };
 
     // Register tokens as masked secrets so they are redacted from all log output,
     // even if a downstream tool echoes them.
-    for (const token of [npmToken, vsceToken, ovsxToken]) {
+    for (const token of [publishOptions.npmToken, publishOptions.vsceToken, publishOptions.ovsxToken]) {
         if (token) {
             core.setSecret(token);
         }
     }
 
     try {
-        await publishPackages({ npmPackages, vscodePackages, dryRun, npmToken, vsceToken, ovsxToken, vsceVersion, ovsxVersion });
+        await publishPackages(publishOptions);
     } catch (error) {
         core.setFailed(error instanceof Error ? error.message : String(error));
     }
