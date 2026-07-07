@@ -13,10 +13,10 @@ const ctx = await esbuild.context({
     format: 'cjs',
     loader: { '.ts': 'ts' },
     platform: 'node',
-    minify: true,
+    minify: true
 });
 
 await ctx.rebuild();
-ctx.dispose();
+await ctx.dispose();
 
 console.log('Build succeeded');

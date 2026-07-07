@@ -57,4 +57,5 @@ async function run(): Promise<void> {
     }
 }
 
+// oxlint-disable-next-line typescript/no-floating-promises
 run();

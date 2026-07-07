@@ -4,17 +4,22 @@
   "type": "module",
   "scripts": {
     "build": "node esbuild.mjs",
+    "fmt": "oxfmt",
+    "lint": "oxlint --type-aware",
     "typecheck": "tsc --noEmit",
     "watch": "tsc --noEmit --watch"
   },
   "dependencies": {
     "@actions/core": "^3.0.1",
-    "semver": "~7.8.4"
+    "semver": "~7.8.5"
   },
   "devDependencies": {
     "@types/node": "~20.19.41",
     "@types/semver": "~7.7.1",
     "esbuild": "~0.28.1",
-    "typescript": "~5.9.3"
+    "oxfmt": "~0.57.0",
+    "oxlint": "~1.72.0",
+    "oxlint-tsgolint": "~0.24.0",
+    "typescript": "~6.0.3"
   }
 }
