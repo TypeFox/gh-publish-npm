@@ -1,5 +1,4 @@
 {
-  "editor.minimap.enabled": false,
   "oxc.enable.oxlint": true,
   "oxc.typeAware": true,
   "editor.defaultFormatter": "oxc.oxc-vscode"
