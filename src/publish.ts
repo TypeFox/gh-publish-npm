@@ -138,27 +138,26 @@ async function isUpToDate(packagePath: string): Promise<boolean> {
 async function publishPackage(options: PublishPackageOptions): Promise<void> {
     const { packageName, dryRun, npmTag, npmToken } = options;
     return new Promise((resolve, reject) => {
-        // fast-path: if dryRun is true, we don't need to continue
-        if (dryRun) {
-            console.log(`[Dry Run] Would publish package at ${packageName}`);
-            resolve();
-            return;
-        }
-
         const env = { ...process.env };
         if (npmToken !== undefined) {
             env.NODE_AUTH_TOKEN = npmToken;
         }
-
-        let args = ['publish', '--provenance', '--access', 'public'];
-        if (npmTag !== undefined) {
-            args = args.splice(1, 0, '--tag', npmTag);
+        let publishArgs = ['publish', '--provenance', '--access', 'public'];
+        if (npmTag !== undefined && npmTag.length > 0) {
+            publishArgs.splice(1, 0, '--tag', npmTag);
         }
-        execFile('npm', args, { cwd: packageName, env }, (error, stdout) => {
+        if (dryRun) {
+            publishArgs.splice(1, 0, '--dry-run');
+        }
+        execFile('npm', publishArgs, { cwd: packageName, env }, (error, stdout) => {
             if (error) {
                 reject(error);
             } else {
-                console.log(`Successfully published package at ${packageName}:`, stdout);
+                if (dryRun) {
+                    console.log(`[Dry Run] Would publish package at ${packageName}`, stdout);
+                } else {
+                    console.log(`Successfully published package at ${packageName}:`, stdout);
+                }
                 resolve();
             }
         });

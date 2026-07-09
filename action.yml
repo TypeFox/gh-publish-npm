@@ -17,6 +17,10 @@ inputs:
     description: 'Log what would be published without actually publishing.'
     required: false
     default: 'false'
+  npm-tag:
+    description: 'Define a specific npm tag'
+    required: false
+    default: ''
   npm-token:
     description: 'npm auth token. Leave empty to use OIDC trusted publishing with --provenance.'
     required: false
