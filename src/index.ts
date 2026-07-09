@@ -34,12 +34,12 @@ async function run(): Promise<void> {
         npmPackages: parseList(core.getInput('npm-packages')),
         vscodePackages: parseList(core.getInput('vscode-packages')),
         dryRun: parseDryRun(core.getInput('dry-run')),
-        npmTag: core.getInput('npm-tag') || undefined,
-        npmToken: core.getInput('npm-token') || undefined,
-        vsceToken: core.getInput('vsce-token') || undefined,
-        ovsxToken: core.getInput('ovsx-token') || undefined,
-        vsceVersion: core.getInput('vsce-version') || 'provided',
-        ovsxVersion: core.getInput('ovsx-version') || 'provided'
+        npmTag: core.getInput('npm-tag').trim() || undefined,
+        npmToken: core.getInput('npm-token').trim() || undefined,
+        vsceToken: core.getInput('vsce-token').trim() || undefined,
+        ovsxToken: core.getInput('ovsx-token').trim() || undefined,
+        vsceVersion: core.getInput('vsce-version').trim() || 'provided',
+        ovsxVersion: core.getInput('ovsx-version').trim() || 'provided'
     };
 
     // Register tokens as masked secrets so they are redacted from all log output,
