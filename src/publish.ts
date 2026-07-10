@@ -132,7 +132,8 @@ async function checkNpmVersionStatus(packagePath: string): Promise<PackagePublis
     return new Promise((resolve, reject) => {
         execFile('npm', ['view', name, 'version'], { cwd: packagePath }, (error, stdout, stderr) => {
             if (error !== null) {
-                reject(handleExecFileException(error, stdout));
+                printExecFileException(error, stdout);
+                reject(error);
             } else if (stderr.includes('code E404')) {
                 reject(new Error(`Package ${name} not found on npm registry.`));
             } else {
@@ -193,7 +194,8 @@ async function publishPackage(publishArgs: string[], options: PublishPackageOpti
     return new Promise((resolve, reject) => {
         execFile('npm', publishArgs, { cwd: options.packagePath, env }, (error, stdout) => {
             if (error !== null) {
-                reject(handleExecFileException(error, stdout));
+                printExecFileException(error, stdout);
+                reject(error);
             } else {
                 const msgCommon = `project "${packagePublishInfo.projectName}" at "${options.packagePath}"`;
                 if (dryRun) {
@@ -207,7 +209,7 @@ async function publishPackage(publishArgs: string[], options: PublishPackageOpti
     });
 }
 
-export function handleExecFileException(error: ExecFileException, stdout: string, appendStack: boolean = true): Error {
+export function printExecFileException(error: ExecFileException, stdout: string, appendStack: boolean = true): string {
     let errorLog = `Error: ${error.message}`;
     if (error.code !== undefined) {
         errorLog += `\ncode: ${error.code}`;
@@ -226,7 +228,8 @@ export function handleExecFileException(error: ExecFileException, stdout: string
     if (error.stack !== undefined && appendStack) {
         errorLog += `\nstack: ${error.stack}`;
     }
-    return new Error(errorLog);
+    console.error(errorLog);
+    return errorLog;
 }
 
 async function publishExtension(options: PublishExtensionOptions): Promise<boolean> {
@@ -273,7 +276,8 @@ async function getVsceVersion(versionDefinition: VersionDefinition): Promise<str
         const npxArgs = buildNpxArgs('vsce', cliVersion, ['show', id, '--json']);
         execFile('npx', npxArgs, { cwd: packagePath }, (error, stdout) => {
             if (error !== null) {
-                reject(handleExecFileException(error, stdout));
+                printExecFileException(error, stdout);
+                reject(error);
             } else {
                 const info = JSON.parse(stdout);
                 resolve(info.versions[0].version);
@@ -301,7 +305,8 @@ async function publishVsce(options: PublishExecOptions): Promise<void> {
         const npxArgs = buildNpxArgs('vsce', cliVersion, ['publish', fileName]);
         execFile('npx', npxArgs, { cwd: packagePath, env }, (error, stdout) => {
             if (error !== null) {
-                reject(handleExecFileException(error, stdout));
+                printExecFileException(error, stdout);
+                reject(error);
             } else {
                 console.log(`Successfully published VSCE extension at ${packagePath}:`, stdout);
                 resolve();
@@ -316,7 +321,8 @@ async function getOvsxVersion(versionDefinition: VersionDefinition): Promise<str
         const npxArgs = buildNpxArgs('ovsx', cliVersion, ['get', id, '--metadata']);
         execFile('npx', npxArgs, { cwd: packagePath }, (error, stdout) => {
             if (error !== null) {
-                reject(handleExecFileException(error, stdout));
+                printExecFileException(error, stdout);
+                reject(error);
             } else {
                 const info = JSON.parse(stdout);
                 resolve(info.version);
@@ -344,7 +350,8 @@ async function publishOvsx(options: PublishExecOptions): Promise<void> {
         const npxArgs = buildNpxArgs('ovsx', cliVersion, ['publish', fileName]);
         execFile('npx', npxArgs, { cwd: packagePath, env }, (error, stdout) => {
             if (error !== null) {
-                reject(handleExecFileException(error, stdout));
+                printExecFileException(error, stdout);
+                reject(error);
             } else {
                 console.log(`Successfully published OVSX extension at ${packagePath}:`, stdout);
                 resolve();

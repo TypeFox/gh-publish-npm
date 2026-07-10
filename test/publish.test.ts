@@ -7,7 +7,7 @@
 import { ExecFileException } from 'node:child_process';
 import { parse } from 'semver';
 import { describe, expect, test } from 'vitest';
-import { evaluateVersions, handleExecFileException, preparePublishPackage, PublishPackageOptions } from '../src/publish.js';
+import { evaluateVersions, printExecFileException, preparePublishPackage, PublishPackageOptions } from '../src/publish.js';
 
 describe.concurrent('semver checks', { concurrent: true }, () => {
     test('Check semver pre-release', () => {
@@ -148,29 +148,27 @@ describe.concurrent('semver checks', { concurrent: true }, () => {
     test('Test handleExecFileException', () => {
         const stdout = 'Standard output';
         let error = new Error('Message') as ExecFileException;
-        let execFileException = handleExecFileException(error, stdout, false);
-        expect(execFileException.message).toBe('Error: Message\nstdout: Standard output');
+        let logMessage = printExecFileException(error, stdout, false);
+        expect(logMessage).toBe('Error: Message\nstdout: Standard output');
 
         error.code = 1;
-        execFileException = handleExecFileException(error, stdout, false);
-        expect(execFileException.message).toBe('Error: Message\ncode: 1\nstdout: Standard output');
+        logMessage = printExecFileException(error, stdout, false);
+        expect(logMessage).toBe('Error: Message\ncode: 1\nstdout: Standard output');
 
         error.stderr = 'Error output';
-        execFileException = handleExecFileException(error, stdout, false);
-        expect(execFileException.message).toBe('Error: Message\ncode: 1\nstderr: Error output\nstdout: Standard output');
+        logMessage = printExecFileException(error, stdout, false);
+        expect(logMessage).toBe('Error: Message\ncode: 1\nstderr: Error output\nstdout: Standard output');
 
         error.stdout = 'Standard output via error';
-        execFileException = handleExecFileException(error, stdout, false);
-        expect(execFileException.message).toBe('Error: Message\ncode: 1\nstderr: Error output\nstdout: Standard output via error');
+        logMessage = printExecFileException(error, stdout, false);
+        expect(logMessage).toBe('Error: Message\ncode: 1\nstderr: Error output\nstdout: Standard output via error');
 
         error.signal = 'SIGSEGV';
-        execFileException = handleExecFileException(error, stdout, false);
-        expect(execFileException.message).toBe(
-            'Error: Message\ncode: 1\nstderr: Error output\nstdout: Standard output via error\nsignal: SIGSEGV'
-        );
+        logMessage = printExecFileException(error, stdout, false);
+        expect(logMessage).toBe('Error: Message\ncode: 1\nstderr: Error output\nstdout: Standard output via error\nsignal: SIGSEGV');
 
-        execFileException = handleExecFileException(error, stdout, true);
-        expect(execFileException.message).toContain('stack: Error: Message');
-        expect(execFileException.message).toContain('publish.test.ts');
+        logMessage = printExecFileException(error, stdout, true);
+        expect(logMessage).toContain('stack: Error: Message');
+        expect(logMessage).toContain('publish.test.ts');
     });
 });
