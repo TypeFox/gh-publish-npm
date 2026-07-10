@@ -18,7 +18,7 @@ inputs:
     required: false
     default: 'false'
   npm-tag:
-    description: 'Define a specific npm tag'
+    description: 'Force a specific npm tag to be used for all packages. If not set and a preview version like "1.0.0-next-0" or "1.0.0-beta" is provided, then the tag "next" or "beta" is used.'
     required: false
     default: ''
   npm-token:

@@ -4,10 +4,10 @@
  * terms of the MIT License, which is available in the project root.
  ******************************************************************************/
 
-import fs from 'fs';
-import path from 'path';
-import { execFile, execFileSync } from 'child_process';
-import { compare } from 'semver';
+import { execFile, execFileSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import { compare, parse, SemVer } from 'semver';
 
 export type PublishOptions = {
     npmPackages: string[];
@@ -22,10 +22,18 @@ export type PublishOptions = {
 };
 
 export type PublishPackageOptions = {
-    packageName: string;
+    packagePublishInfo: PackagePublishInfo;
+    packagePath: string;
     dryRun: boolean;
-    npmTag?: string;
+    npmTagOverride?: string;
     npmToken?: string;
+};
+
+export type PackagePublishInfo = {
+    projectName: string;
+    isUpToDate: boolean;
+    tag?: string;
+    version: SemVer;
 };
 
 export type PublishExtensionOptions = {
@@ -60,18 +68,19 @@ export async function publishPackages(opts: PublishOptions): Promise<void> {
 
     let publishedAny = false;
 
-    const packagesToPublish: string[] = [];
-    for (const pkg of npmPackages) {
-        const upToDate = await isUpToDate(pkg);
-        if (upToDate) {
-            console.log(`Package at ${pkg} is up to date. Skipping publish.`);
+    const publishPackageOptions: Array<PublishPackageOptions> = [];
+    for (const packagePath of npmPackages) {
+        const packagePublishInfo = await checkNpmVersionStatus(packagePath);
+        if (packagePublishInfo.isUpToDate) {
+            console.log(`Package at ${packagePath} is up to date. Skipping publish.`);
         } else {
-            console.log(`Package at ${pkg} has updates. Adding to publish list.`);
-            packagesToPublish.push(pkg);
+            console.log(`Package at ${packagePath} has updates. Adding to publish list.`);
+            publishPackageOptions.push({ packagePublishInfo, packagePath, dryRun, npmTagOverride: npmTag, npmToken });
         }
     }
-    for (const pkg of packagesToPublish) {
-        await publishPackage({ packageName: pkg, dryRun, npmTag, npmToken });
+    for (const publishPackageOption of publishPackageOptions) {
+        const publishArgs = preparePublishPackage(publishPackageOption);
+        await publishPackage(publishArgs, publishPackageOption);
         publishedAny = true;
     }
 
@@ -116,47 +125,74 @@ async function readPackageJson(packagePath?: string): Promise<Record<string, str
     return JSON.parse(content);
 }
 
-async function isUpToDate(packagePath: string): Promise<boolean> {
+async function checkNpmVersionStatus(packagePath: string): Promise<PackagePublishInfo> {
     const { name, version } = await readPackageJson(packagePath);
     return new Promise((resolve, reject) => {
         execFile('npm', ['view', name, 'version'], { cwd: packagePath }, (error, stdout, stderr) => {
-            if (error) {
-                reject(error);
-                return;
-            }
-
-            if (stderr.includes('code E404')) {
-                reject(new Error(`Package ${name} not found on npm registry.`));
+            if (error !== null || stderr.includes('code E404')) {
+                reject(error ?? new Error(`Package ${name} not found on npm registry.`));
             } else {
-                const publishedVersion = stdout.trim();
-                resolve(compare(version, publishedVersion) !== 1);
+                resolve(evaluateVersions(packagePath, name, version, stdout.trim()));
             }
         });
     });
 }
 
-async function publishPackage(options: PublishPackageOptions): Promise<void> {
-    const { packageName, dryRun, npmTag, npmToken } = options;
+/**
+ * Compares the local version of a package with the published version.
+ * It returns a PackagePublishInfo object telling if the package is up to date
+ * and if it carries a pre-release tag (e.g., "next", "beta", etc.).
+ */
+export function evaluateVersions(packagePath: string, projectName: string, version: string, publishedVersion: string): PackagePublishInfo {
+    const parsedPublishedVersion = parse(publishedVersion);
+    const parsedVersion = parse(version);
+
+    if (parsedPublishedVersion !== null && parsedVersion !== null) {
+        const isUpToDate = compare(parsedVersion, parsedPublishedVersion) !== 1;
+        const preRelease = parsedVersion.prerelease.length > 0 ? true : false;
+        const tag = preRelease ? parsedVersion.prerelease[0].toString() : undefined;
+        return {
+            projectName,
+            isUpToDate,
+            tag,
+            version: parsedVersion
+        };
+    } else {
+        throw new Error(
+            `Failed to parse versions of: [ packagePath: ${packagePath}; project ${projectName}: version: ${version}; publish: ${publishedVersion}]`
+        );
+    }
+}
+
+export function preparePublishPackage(options: PublishPackageOptions): string[] {
+    const { packagePublishInfo, dryRun, npmTagOverride } = options;
+    let publishArgs = ['publish', '--provenance', '--access', 'public'];
+    const npmTag = npmTagOverride ?? packagePublishInfo.tag;
+    if (npmTag !== undefined) {
+        publishArgs.splice(1, 0, '--tag', npmTag);
+    }
+    if (dryRun) {
+        publishArgs.splice(1, 0, '--dry-run');
+    }
+    return publishArgs;
+}
+
+async function publishPackage(publishArgs: string[], options: PublishPackageOptions): Promise<void> {
+    const env = { ...process.env };
+    const { packagePublishInfo, dryRun, npmToken } = options;
+    if (npmToken !== undefined) {
+        env.NODE_AUTH_TOKEN = npmToken;
+    }
     return new Promise((resolve, reject) => {
-        const env = { ...process.env };
-        if (npmToken !== undefined) {
-            env.NODE_AUTH_TOKEN = npmToken;
-        }
-        let publishArgs = ['publish', '--provenance', '--access', 'public'];
-        if (npmTag !== undefined && npmTag.length > 0) {
-            publishArgs.splice(1, 0, '--tag', npmTag);
-        }
-        if (dryRun) {
-            publishArgs.splice(1, 0, '--dry-run');
-        }
-        execFile('npm', publishArgs, { cwd: packageName, env }, (error, stdout) => {
+        execFile('npm', publishArgs, { cwd: options.packagePath, env }, (error, stdout) => {
             if (error) {
                 reject(error);
             } else {
+                const msgCommon = `project "${packagePublishInfo.projectName}" at "${options.packagePath}"`;
                 if (dryRun) {
-                    console.log(`[Dry Run] Would publish package at ${packageName}`, stdout);
+                    console.log(`[Dry Run] Would publish ${msgCommon}:`, stdout);
                 } else {
-                    console.log(`Successfully published package at ${packageName}:`, stdout);
+                    console.log(`Successfully published ${msgCommon}:`, stdout);
                 }
                 resolve();
             }
