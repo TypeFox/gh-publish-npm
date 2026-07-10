@@ -34,7 +34,7 @@ async function run(): Promise<void> {
         npmPackages: parseList(core.getInput('npm-packages')),
         vscodePackages: parseList(core.getInput('vscode-packages')),
         dryRun: parseDryRun(core.getInput('dry-run')),
-        npmTagOverride: core.getInput('npm-tag').trim() || undefined,
+        npmTag: core.getInput('npm-tag').trim() || undefined,
         npmToken: core.getInput('npm-token').trim() || undefined,
         vsceToken: core.getInput('vsce-token').trim() || undefined,
         ovsxToken: core.getInput('ovsx-token').trim() || undefined,

@@ -6,7 +6,7 @@
 
 import { parse } from 'semver';
 import { describe, expect, test } from 'vitest';
-import { preparePublishPackage, processVersions, PublishPackageOptions } from '../src/publish.js';
+import { preparePublishPackage, evaluateVersions, PublishPackageOptions } from '../src/publish.js';
 
 describe.concurrent('semver checks', { concurrent: true }, () => {
     test('Check semver pre-release', () => {
@@ -40,58 +40,60 @@ describe.concurrent('semver checks', { concurrent: true }, () => {
     });
 
     test('Test processVersions', () => {
+        let packagePath = 'packages/foo';
         let packageName = 'foo';
         let version = '1.0.0';
         let publishedVersion = '1.0.0';
-        let processed = processVersions(packageName, version, publishedVersion);
+        let processed = evaluateVersions(packagePath, packageName, version, publishedVersion);
         expect(processed.isUpToDate).toBeTruthy();
-        expect(processed.packageName).toBe('foo');
+        expect(processed.projectName).toBe('foo');
         expect(processed.tag).toBeUndefined();
         expect(processed.version.version).toBe('1.0.0');
 
         publishedVersion = '2.0.0';
-        processed = processVersions(packageName, version, publishedVersion);
+        processed = evaluateVersions(packagePath, packageName, version, publishedVersion);
         expect(processed.isUpToDate).toBeTruthy();
-        expect(processed.packageName).toBe('foo');
+        expect(processed.projectName).toBe('foo');
         expect(processed.tag).toBeUndefined();
         expect(processed.version.version).toBe('1.0.0');
 
         version = '2.0.0';
         publishedVersion = '1.0.0';
-        processed = processVersions(packageName, version, publishedVersion);
+        processed = evaluateVersions(packagePath, packageName, version, publishedVersion);
         expect(processed.isUpToDate).toBeFalsy();
-        expect(processed.packageName).toBe('foo');
+        expect(processed.projectName).toBe('foo');
         expect(processed.tag).toBeUndefined();
         expect(processed.version.version).toBe('2.0.0');
 
         version = '2.0.0-next.0';
-        processed = processVersions(packageName, version, publishedVersion);
+        processed = evaluateVersions(packagePath, packageName, version, publishedVersion);
         expect(processed.isUpToDate).toBeFalsy();
-        expect(processed.packageName).toBe('foo');
+        expect(processed.projectName).toBe('foo');
         expect(processed.tag).toBe('next');
         expect(processed.version.version).toBe('2.0.0-next.0');
 
         publishedVersion = '2.0.0';
-        processed = processVersions(packageName, version, publishedVersion);
+        processed = evaluateVersions(packagePath, packageName, version, publishedVersion);
         expect(processed.isUpToDate).toBeTruthy();
-        expect(processed.packageName).toBe('foo');
+        expect(processed.projectName).toBe('foo');
         expect(processed.tag).toBe('next');
         expect(processed.version.version).toBe('2.0.0-next.0');
 
         version = '2.eta';
         publishedVersion = '2.0.0';
-        expect(() => processVersions(packageName, version, publishedVersion)).toThrow(
-            'Failed to parse versions of package "foo": [version: 2.eta, publish: 2.0.0]'
+        expect(() => evaluateVersions(packagePath, packageName, version, publishedVersion)).toThrow(
+            'Failed to parse versions of: [ packagePath: packages/foo; project foo: version: 2.eta; publish: 2.0.0]'
         );
     });
 
     test('Test preparePublishPackage', () => {
         const options: PublishPackageOptions = {
             packagePublishInfo: {
-                packageName: 'foo',
+                projectName: 'foo',
                 isUpToDate: true,
                 version: parse('1.0.0')!
             },
+            packagePath: 'packages/foo',
             dryRun: false
         };
         let publishArgs = preparePublishPackage(options);
