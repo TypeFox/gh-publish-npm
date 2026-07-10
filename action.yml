@@ -49,6 +49,10 @@ inputs:
       via npx at your own risk.
     required: false
     default: 'provided'
+  verbose:
+    description: 'Enable verbose logging where possible.'
+    required: false
+    default: 'false'
 
 runs:
   using: 'node24'

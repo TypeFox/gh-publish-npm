@@ -4,9 +4,10 @@
  * terms of the MIT License, which is available in the project root.
  ******************************************************************************/
 
+import { ExecFileException } from 'node:child_process';
 import { parse } from 'semver';
 import { describe, expect, test } from 'vitest';
-import { preparePublishPackage, evaluateVersions, PublishPackageOptions } from '../src/publish.js';
+import { evaluateVersions, handleExecFileException, preparePublishPackage, PublishPackageOptions } from '../src/publish.js';
 
 describe.concurrent('semver checks', { concurrent: true }, () => {
     test('Check semver pre-release', () => {
@@ -103,6 +104,7 @@ describe.concurrent('semver checks', { concurrent: true }, () => {
                 version: parse('1.0.0')!
             },
             packagePath: 'packages/foo',
+            verbose: false,
             dryRun: false
         };
         let publishArgs = preparePublishPackage(options);
@@ -124,5 +126,51 @@ describe.concurrent('semver checks', { concurrent: true }, () => {
         options.dryRun = false;
         publishArgs = preparePublishPackage(options);
         expect(publishArgs).toEqual(['publish', '--tag', 'fancy-tag', '--provenance', '--access', 'public']);
+
+        options.verbose = true;
+        options.npmTagOverride = undefined;
+        publishArgs = preparePublishPackage(options);
+        expect(publishArgs).toEqual(['publish', '--verbose', '--provenance', '--access', 'public']);
+
+        options.dryRun = true;
+        publishArgs = preparePublishPackage(options);
+        expect(publishArgs).toEqual(['publish', '--verbose', '--dry-run', '--provenance', '--access', 'public']);
+
+        options.npmTagOverride = 'fancy-tag';
+        publishArgs = preparePublishPackage(options);
+        expect(publishArgs).toEqual(['publish', '--verbose', '--dry-run', '--tag', 'fancy-tag', '--provenance', '--access', 'public']);
+
+        options.dryRun = false;
+        publishArgs = preparePublishPackage(options);
+        expect(publishArgs).toEqual(['publish', '--verbose', '--tag', 'fancy-tag', '--provenance', '--access', 'public']);
+    });
+
+    test('Test handleExecFileException', () => {
+        const stdout = 'Standard output';
+        let error = new Error('Message') as ExecFileException;
+        let execFileException = handleExecFileException(error, stdout, false);
+        expect(execFileException.message).toBe('Error: Message\nstdout: Standard output');
+
+        error.code = 1;
+        execFileException = handleExecFileException(error, stdout, false);
+        expect(execFileException.message).toBe('Error: Message\ncode: 1\nstdout: Standard output');
+
+        error.stderr = 'Error output';
+        execFileException = handleExecFileException(error, stdout, false);
+        expect(execFileException.message).toBe('Error: Message\ncode: 1\nstderr: Error output\nstdout: Standard output');
+
+        error.stdout = 'Standard output via error';
+        execFileException = handleExecFileException(error, stdout, false);
+        expect(execFileException.message).toBe('Error: Message\ncode: 1\nstderr: Error output\nstdout: Standard output via error');
+
+        error.signal = 'SIGSEGV';
+        execFileException = handleExecFileException(error, stdout, false);
+        expect(execFileException.message).toBe(
+            'Error: Message\ncode: 1\nstderr: Error output\nstdout: Standard output via error\nsignal: SIGSEGV'
+        );
+
+        execFileException = handleExecFileException(error, stdout, true);
+        expect(execFileException.message).toContain('stack: Error: Message');
+        expect(execFileException.message).toContain('publish.test.ts');
     });
 });

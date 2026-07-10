@@ -4,7 +4,7 @@
  * terms of the MIT License, which is available in the project root.
  ******************************************************************************/
 
-import { execFile, execFileSync } from 'node:child_process';
+import { execFile, ExecFileException, execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { compare, parse, SemVer } from 'semver';
@@ -19,11 +19,13 @@ export type PublishOptions = {
     ovsxToken?: string;
     vsceVersion: string;
     ovsxVersion: string;
+    verbose: boolean;
 };
 
 export type PublishPackageOptions = {
     packagePublishInfo: PackagePublishInfo;
     packagePath: string;
+    verbose: boolean;
     dryRun: boolean;
     npmTagOverride?: string;
     npmToken?: string;
@@ -60,7 +62,7 @@ export type PublishExecOptions = {
 };
 
 export async function publishPackages(opts: PublishOptions): Promise<void> {
-    const { npmPackages, vscodePackages, dryRun, npmTag, npmToken, vsceToken, ovsxToken, vsceVersion, ovsxVersion } = opts;
+    const { npmPackages, vscodePackages, dryRun, npmTag, npmToken, vsceToken, ovsxToken, vsceVersion, ovsxVersion, verbose } = opts;
 
     if (dryRun) {
         console.log('Running in dry mode. No packages will be published.');
@@ -75,7 +77,7 @@ export async function publishPackages(opts: PublishOptions): Promise<void> {
             console.log(`Package at ${packagePath} is up to date. Skipping publish.`);
         } else {
             console.log(`Package at ${packagePath} has updates. Adding to publish list.`);
-            publishPackageOptions.push({ packagePublishInfo, packagePath, dryRun, npmTagOverride: npmTag, npmToken });
+            publishPackageOptions.push({ packagePublishInfo, packagePath, dryRun, npmTagOverride: npmTag, npmToken, verbose });
         }
     }
     for (const publishPackageOption of publishPackageOptions) {
@@ -129,8 +131,10 @@ async function checkNpmVersionStatus(packagePath: string): Promise<PackagePublis
     const { name, version } = await readPackageJson(packagePath);
     return new Promise((resolve, reject) => {
         execFile('npm', ['view', name, 'version'], { cwd: packagePath }, (error, stdout, stderr) => {
-            if (error !== null || stderr.includes('code E404')) {
-                reject(error ?? new Error(`Package ${name} not found on npm registry.`));
+            if (error !== null) {
+                reject(handleExecFileException(error, stdout));
+            } else if (stderr.includes('code E404')) {
+                reject(new Error(`Package ${name} not found on npm registry.`));
             } else {
                 resolve(evaluateVersions(packagePath, name, version, stdout.trim()));
             }
@@ -165,7 +169,7 @@ export function evaluateVersions(packagePath: string, projectName: string, versi
 }
 
 export function preparePublishPackage(options: PublishPackageOptions): string[] {
-    const { packagePublishInfo, dryRun, npmTagOverride } = options;
+    const { packagePublishInfo, dryRun, npmTagOverride, verbose } = options;
     let publishArgs = ['publish', '--provenance', '--access', 'public'];
     const npmTag = npmTagOverride ?? packagePublishInfo.tag;
     if (npmTag !== undefined) {
@@ -173,6 +177,9 @@ export function preparePublishPackage(options: PublishPackageOptions): string[] 
     }
     if (dryRun) {
         publishArgs.splice(1, 0, '--dry-run');
+    }
+    if (verbose) {
+        publishArgs.splice(1, 0, '--verbose');
     }
     return publishArgs;
 }
@@ -185,8 +192,8 @@ async function publishPackage(publishArgs: string[], options: PublishPackageOpti
     }
     return new Promise((resolve, reject) => {
         execFile('npm', publishArgs, { cwd: options.packagePath, env }, (error, stdout) => {
-            if (error) {
-                reject(error);
+            if (error !== null) {
+                reject(handleExecFileException(error, stdout));
             } else {
                 const msgCommon = `project "${packagePublishInfo.projectName}" at "${options.packagePath}"`;
                 if (dryRun) {
@@ -198,6 +205,28 @@ async function publishPackage(publishArgs: string[], options: PublishPackageOpti
             }
         });
     });
+}
+
+export function handleExecFileException(error: ExecFileException, stdout: string, appendStack: boolean = true): Error {
+    let errorLog = `Error: ${error.message}`;
+    if (error.code !== undefined) {
+        errorLog += `\ncode: ${error.code}`;
+    }
+    if (error.stderr !== undefined) {
+        errorLog += `\nstderr: ${error.stderr}`;
+    }
+    if (error.stdout !== undefined) {
+        errorLog += `\nstdout: ${error.stdout}`;
+    } else if (stdout !== undefined) {
+        errorLog += `\nstdout: ${stdout}`;
+    }
+    if (error.signal !== undefined) {
+        errorLog += `\nsignal: ${error.signal}`;
+    }
+    if (error.stack !== undefined && appendStack) {
+        errorLog += `\nstack: ${error.stack}`;
+    }
+    return new Error(errorLog);
 }
 
 async function publishExtension(options: PublishExtensionOptions): Promise<boolean> {
@@ -243,8 +272,8 @@ async function getVsceVersion(versionDefinition: VersionDefinition): Promise<str
     return new Promise((resolve, reject) => {
         const npxArgs = buildNpxArgs('vsce', cliVersion, ['show', id, '--json']);
         execFile('npx', npxArgs, { cwd: packagePath }, (error, stdout) => {
-            if (error) {
-                reject(error);
+            if (error !== null) {
+                reject(handleExecFileException(error, stdout));
             } else {
                 const info = JSON.parse(stdout);
                 resolve(info.versions[0].version);
@@ -271,8 +300,8 @@ async function publishVsce(options: PublishExecOptions): Promise<void> {
         }
         const npxArgs = buildNpxArgs('vsce', cliVersion, ['publish', fileName]);
         execFile('npx', npxArgs, { cwd: packagePath, env }, (error, stdout) => {
-            if (error) {
-                reject(error);
+            if (error !== null) {
+                reject(handleExecFileException(error, stdout));
             } else {
                 console.log(`Successfully published VSCE extension at ${packagePath}:`, stdout);
                 resolve();
@@ -286,8 +315,8 @@ async function getOvsxVersion(versionDefinition: VersionDefinition): Promise<str
     return new Promise((resolve, reject) => {
         const npxArgs = buildNpxArgs('ovsx', cliVersion, ['get', id, '--metadata']);
         execFile('npx', npxArgs, { cwd: packagePath }, (error, stdout) => {
-            if (error) {
-                reject(error);
+            if (error !== null) {
+                reject(handleExecFileException(error, stdout));
             } else {
                 const info = JSON.parse(stdout);
                 resolve(info.version);
@@ -314,8 +343,8 @@ async function publishOvsx(options: PublishExecOptions): Promise<void> {
         }
         const npxArgs = buildNpxArgs('ovsx', cliVersion, ['publish', fileName]);
         execFile('npx', npxArgs, { cwd: packagePath, env }, (error, stdout) => {
-            if (error) {
-                reject(error);
+            if (error !== null) {
+                reject(handleExecFileException(error, stdout));
             } else {
                 console.log(`Successfully published OVSX extension at ${packagePath}:`, stdout);
                 resolve();

@@ -31,6 +31,7 @@ A GitHub Action that publishes npm packages, VS Code extensions, and Open VSX ex
 | `ovsx-token` | No | `''` | Open VSX access token. |
 | `vsce-version` | No | `provided` | Version of the vsce CLI to use. `provided` (recommended) runs the version from the project's devDependencies and fails if absent. Any other value (e.g. `"3.9.1"` or `"latest"`) is fetched on demand via `npx` at your own risk. |
 | `ovsx-version` | No | `provided` | Version of the ovsx CLI to use. `provided` (recommended) runs the version from the project's devDependencies and fails if absent. Any other value (e.g. `"1.0.1"` or `"latest"`) is fetched on demand via `npx` at your own risk. |
+| `verbose` | No | `false` | Enable verbose logging where possible. |
 
 ## NPM authentication
 
