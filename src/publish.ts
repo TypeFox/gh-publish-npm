@@ -4,9 +4,9 @@
  * terms of the MIT License, which is available in the project root.
  ******************************************************************************/
 
-import { execFile, execFileSync } from 'child_process';
-import fs from 'fs';
-import path from 'path';
+import { execFile, execFileSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
 import { compare, parse, SemVer } from 'semver';
 
 export type PublishOptions = {

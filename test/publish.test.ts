@@ -19,6 +19,15 @@ describe.concurrent('semver checks', { concurrent: true }, () => {
             expect(parsed?.major).toBe(2);
         }
 
+        // ill-formated pre-release version, but semver still parses it
+        parsed = parse('2.0.0-next-0');
+        if (parsed !== null && parsed.prerelease.length > 0) {
+            expect(parsed.prerelease).toHaveLength(1);
+            expect(parsed.prerelease[0]).toBe('next-0');
+            expect(parsed?.version).toBe('2.0.0-next-0');
+            expect(parsed?.major).toBe(2);
+        }
+
         parsed = parse('2.0.0-beta');
         if (parsed !== null && parsed.prerelease.length > 0) {
             expect(parsed.prerelease).toHaveLength(1);
