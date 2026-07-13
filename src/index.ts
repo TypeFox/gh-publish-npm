@@ -17,7 +17,7 @@ function parseList(input: string): string[] {
 const TRUTHY = new Set(['true', '1', 'yes', 'y', 'on']);
 const FALSY = new Set(['false', '0', 'no', 'n', 'off']);
 
-function parseDryRun(input: string): boolean {
+function parseBoolean(input: string, selectName: 'dry-run' | 'verbose'): boolean {
     const value = input.trim().toLowerCase();
     if (TRUTHY.has(value)) {
         return true;
@@ -25,21 +25,33 @@ function parseDryRun(input: string): boolean {
     if (!value || FALSY.has(value)) {
         return false;
     }
-    core.warning(`Unrecognized dry-run value "${input}"; defaulting to dry-run (no packages will be published).`);
-    return true;
+
+    let defaultValue = false;
+    const warnMsgBase = `Unrecognized ${selectName} value "${input}";`;
+    switch (selectName) {
+        case 'dry-run':
+            core.warning(`${warnMsgBase} defaulting to dry-run (no packages will be published).`);
+            break;
+        case 'verbose':
+            core.warning(`${warnMsgBase} defaulting to non-verbose mode.`);
+            defaultValue = false;
+            break;
+    }
+    return defaultValue;
 }
 
 async function run(): Promise<void> {
     const publishOptions: PublishOptions = {
         npmPackages: parseList(core.getInput('npm-packages')),
         vscodePackages: parseList(core.getInput('vscode-packages')),
-        dryRun: parseDryRun(core.getInput('dry-run')),
-        npmTag: core.getInput('npm-tag').trim() || undefined,
+        dryRun: parseBoolean(core.getInput('dry-run'), 'dry-run'),
+        npmTag: core.getInput('npm-tag').trim() || 'latest',
         npmToken: core.getInput('npm-token').trim() || undefined,
         vsceToken: core.getInput('vsce-token').trim() || undefined,
         ovsxToken: core.getInput('ovsx-token').trim() || undefined,
         vsceVersion: core.getInput('vsce-version').trim() || 'provided',
-        ovsxVersion: core.getInput('ovsx-version').trim() || 'provided'
+        ovsxVersion: core.getInput('ovsx-version').trim() || 'provided',
+        verbose: parseBoolean(core.getInput('verbose'), 'verbose')
     };
 
     // Register tokens as masked secrets so they are redacted from all log output,

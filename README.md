@@ -25,12 +25,13 @@ A GitHub Action that publishes npm packages, VS Code extensions, and Open VSX ex
 | `npm-packages` | No | `''` | Newline-separated package directories to publish to npm. |
 | `vscode-packages` | No | `''` | Newline-separated extension directories to publish to VS Marketplace and Open VSX. |
 | `dry-run` | No | `false` | Log what would be published without actually publishing. |
-| `npm-tag` | No | `''` | Force a specific npm tag to be used for all packages. If not set and a preview version like `1.0.0-next.0` or `1.0.0-beta` is provided, then the tag `next` or `beta` is used. |
+| `npm-tag` | No | `'latest'` | Consider a tag other than latest (default) when comparing versions for npm packages. |
 | `npm-token` | No | `''` | npm auth token. Leave empty to use OIDC trusted publishing with `--provenance`. |
 | `vsce-token` | No | `''` | VS Marketplace personal access token. |
 | `ovsx-token` | No | `''` | Open VSX access token. |
 | `vsce-version` | No | `provided` | Version of the vsce CLI to use. `provided` (recommended) runs the version from the project's devDependencies and fails if absent. Any other value (e.g. `"3.9.1"` or `"latest"`) is fetched on demand via `npx` at your own risk. |
 | `ovsx-version` | No | `provided` | Version of the ovsx CLI to use. `provided` (recommended) runs the version from the project's devDependencies and fails if absent. Any other value (e.g. `"1.0.1"` or `"latest"`) is fetched on demand via `npx` at your own risk. |
+| `verbose` | No | `false` | Enable verbose logging where possible. |
 
 ## NPM authentication
 
