@@ -7,7 +7,14 @@
 import { ExecFileException } from 'node:child_process';
 import { parse } from 'semver';
 import { describe, expect, test } from 'vitest';
-import { evaluateVersions, printExecFileException, preparePublishPackage, PublishPackageOptions } from '../src/publish.js';
+import {
+    evaluateVersions,
+    printExecFileException,
+    preparePublishPackage,
+    PublishPackageOptions,
+    getNpmDistTags,
+    NpmDistTags
+} from '../src/publish.js';
 
 describe.concurrent('semver checks', { concurrent: true }, () => {
     test('Check semver pre-release', () => {
@@ -53,47 +60,76 @@ describe.concurrent('semver checks', { concurrent: true }, () => {
         let packagePath = 'packages/foo';
         let packageName = 'foo';
         let version = '1.0.0';
-        let publishedVersion = '1.0.0';
-        let processed = evaluateVersions(packagePath, packageName, version, publishedVersion);
+        let npmDistTags: NpmDistTags = { latest: '1.0.0' };
+        let processed = evaluateVersions(packagePath, packageName, version, npmDistTags);
         expect(processed.isUpToDate).toBeTruthy();
         expect(processed.projectName).toBe('foo');
         expect(processed.tag).toBeUndefined();
         expect(processed.version.version).toBe('1.0.0');
+        expect(processed.publishedVersion.version).toBe('1.0.0');
 
-        publishedVersion = '2.0.0';
-        processed = evaluateVersions(packagePath, packageName, version, publishedVersion);
+        npmDistTags = { latest: '2.0.0' };
+        processed = evaluateVersions(packagePath, packageName, version, npmDistTags);
         expect(processed.isUpToDate).toBeTruthy();
         expect(processed.projectName).toBe('foo');
         expect(processed.tag).toBeUndefined();
         expect(processed.version.version).toBe('1.0.0');
+        expect(processed.publishedVersion.version).toBe('2.0.0');
 
         version = '2.0.0';
-        publishedVersion = '1.0.0';
-        processed = evaluateVersions(packagePath, packageName, version, publishedVersion);
+        npmDistTags = { latest: '1.0.0' };
+        processed = evaluateVersions(packagePath, packageName, version, npmDistTags);
         expect(processed.isUpToDate).toBeFalsy();
         expect(processed.projectName).toBe('foo');
         expect(processed.tag).toBeUndefined();
         expect(processed.version.version).toBe('2.0.0');
+        expect(processed.publishedVersion.version).toBe('1.0.0');
 
         version = '2.0.0-next.0';
-        processed = evaluateVersions(packagePath, packageName, version, publishedVersion);
+        processed = evaluateVersions(packagePath, packageName, version, npmDistTags);
         expect(processed.isUpToDate).toBeFalsy();
         expect(processed.projectName).toBe('foo');
         expect(processed.tag).toBe('next');
         expect(processed.version.version).toBe('2.0.0-next.0');
+        expect(processed.publishedVersion.version).toBe('1.0.0');
 
-        publishedVersion = '2.0.0';
-        processed = evaluateVersions(packagePath, packageName, version, publishedVersion);
+        npmDistTags = { latest: '2.0.0' };
+        processed = evaluateVersions(packagePath, packageName, version, npmDistTags);
         expect(processed.isUpToDate).toBeTruthy();
         expect(processed.projectName).toBe('foo');
         expect(processed.tag).toBe('next');
         expect(processed.version.version).toBe('2.0.0-next.0');
+        expect(processed.publishedVersion.version).toBe('2.0.0');
 
         version = '2.eta';
-        publishedVersion = '2.0.0';
-        expect(() => evaluateVersions(packagePath, packageName, version, publishedVersion)).toThrow(
+        npmDistTags = { latest: '2.0.0' };
+        expect(() => evaluateVersions(packagePath, packageName, version, npmDistTags)).toThrow(
             'Failed to parse versions of: [ packagePath: packages/foo; project foo: version: 2.eta; publish: 2.0.0]'
         );
+
+        version = '2.0.0-next.0';
+        npmDistTags = {
+            latest: '1.5.0',
+            tag: '1.8.0-next.0'
+        };
+        processed = evaluateVersions(packagePath, packageName, version, npmDistTags);
+        expect(processed.isUpToDate).toBeFalsy();
+        expect(processed.projectName).toBe('foo');
+        expect(processed.tag).toBe('next');
+        expect(processed.version.version).toBe('2.0.0-next.0');
+        expect(processed.publishedVersion.version).toBe('1.8.0-next.0');
+
+        version = '2.0.0-next.0';
+        npmDistTags = {
+            latest: '1.5.0',
+            tag: '2.0.0-next.1'
+        };
+        processed = evaluateVersions(packagePath, packageName, version, npmDistTags);
+        expect(processed.isUpToDate).toBeTruthy();
+        expect(processed.projectName).toBe('foo');
+        expect(processed.tag).toBe('next');
+        expect(processed.version.version).toBe('2.0.0-next.0');
+        expect(processed.publishedVersion.version).toBe('2.0.0-next.1');
     });
 
     test('Test preparePublishPackage', () => {
@@ -101,7 +137,8 @@ describe.concurrent('semver checks', { concurrent: true }, () => {
             packagePublishInfo: {
                 projectName: 'foo',
                 isUpToDate: true,
-                version: parse('1.0.0')!
+                version: parse('2.0.0')!,
+                publishedVersion: parse('1.5.0')!
             },
             packagePath: 'packages/foo',
             verbose: false,
@@ -170,5 +207,27 @@ describe.concurrent('semver checks', { concurrent: true }, () => {
         logMessage = printExecFileException(error, stdout, true);
         expect(logMessage).toContain('stack: Error: Message');
         expect(logMessage).toContain('publish.test.ts');
+    });
+
+    test('Test getNpmDistTags', async () => {
+        let distTags = await getNpmDistTags('monaco-languageclient', 'latest');
+        expect(distTags.latest).toBeDefined();
+        expect(distTags.latest.length).toBeGreaterThan(0);
+        console.log(`monaco-languageclient latest: ${distTags.latest}`);
+
+        distTags = await getNpmDistTags('monaco-languageclient', 'next');
+        expect(distTags.tag).toBeDefined();
+        expect(distTags.tag?.length).toBeGreaterThan(0);
+        console.log(`monaco-languageclient next: ${distTags.tag}`);
+
+        distTags = await getNpmDistTags('langium', 'latest');
+        expect(distTags.latest).toBeDefined();
+        expect(distTags.latest.length).toBeGreaterThan(0);
+        console.log(`langium latest: ${distTags.latest}`);
+
+        distTags = await getNpmDistTags('langium', 'next');
+        expect(distTags.tag).toBeDefined();
+        expect(distTags.tag?.length).toBeGreaterThan(0);
+        console.log(`langium next: ${distTags.tag}`);
     });
 });

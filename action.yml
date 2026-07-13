@@ -18,9 +18,9 @@ inputs:
     required: false
     default: 'false'
   npm-tag:
-    description: 'Force a specific npm tag to be used for all packages. If not set and a preview version like "1.0.0-next-0" or "1.0.0-beta" is provided, then the tag "next" or "beta" is used.'
+    description: 'Consider a tag other than latest (default) when comparing versions for npm packages.'
     required: false
-    default: ''
+    default: 'latest'
   npm-token:
     description: 'npm auth token. Leave empty to use OIDC trusted publishing with --provenance.'
     required: false
