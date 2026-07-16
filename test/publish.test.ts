@@ -130,7 +130,7 @@ describe.concurrent('semver checks', { concurrent: true }, () => {
         expect(processed.tag).toBe('next');
         expect(processed.version.version).toBe('2.0.0-next.0');
         expect(processed.publishedVersion.version).toBe('2.0.0-next.1');
-        
+
         version = '2.1.0';
         npmDistTags = {
             latest: '2.0.1',
@@ -139,7 +139,7 @@ describe.concurrent('semver checks', { concurrent: true }, () => {
         processed = evaluateVersions(packagePath, packageName, version, npmDistTags);
         expect(processed.isUpToDate).toBeFalsy();
         expect(processed.projectName).toBe('foo');
-        expect(processed.tag).toBeUndefined();;
+        expect(processed.tag).toBeUndefined();
         expect(processed.version.version).toBe('2.1.0');
         expect(processed.publishedVersion.version).toBe('2.0.1');
     });
