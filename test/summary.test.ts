@@ -9,10 +9,10 @@ import { deriveNpmStatus, deriveMarketplaceStatus } from '../src/summary.js';
 
 describe.concurrent('summary checks', { concurrent: true }, () => {
     test('Test deriveNpmStatus', () => {
-        expect(deriveNpmStatus(true, false)).toBe('skipped-up-to-date');
-        expect(deriveNpmStatus(true, true)).toBe('skipped-up-to-date');
+        expect(deriveNpmStatus(true, false)).toBe('skipped');
+        expect(deriveNpmStatus(true, true)).toBe('skipped');
         expect(deriveNpmStatus(false, false)).toBe('published');
-        expect(deriveNpmStatus(false, true)).toBe('would-publish-dry-run');
+        expect(deriveNpmStatus(false, true)).toBe('dry-run');
     });
 
     test('Test deriveMarketplaceStatus', () => {

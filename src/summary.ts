@@ -6,8 +6,7 @@
 
 import * as core from '@actions/core';
 
-export type NpmPackageStatus = 'published' | 'skipped-up-to-date' | 'would-publish-dry-run';
-export type MarketplaceStatus = 'published' | 'skipped' | 'dry-run';
+export type PublishStatus = 'published' | 'skipped' | 'dry-run';
 
 export type NpmPackageResult = {
     projectName: string;
@@ -15,7 +14,7 @@ export type NpmPackageResult = {
     localVersion: string;
     publishedVersion: string;
     tag?: string;
-    status: NpmPackageStatus;
+    status: PublishStatus;
 };
 
 export type ExtensionResult = {
@@ -24,8 +23,8 @@ export type ExtensionResult = {
     localVersion: string;
     vsceVersion: string;
     ovsxVersion: string;
-    vsce: MarketplaceStatus;
-    ovsx: MarketplaceStatus;
+    vsce: PublishStatus;
+    ovsx: PublishStatus;
 };
 
 export type PublishSummary = {
@@ -35,34 +34,28 @@ export type PublishSummary = {
     extensions: ExtensionResult[];
 };
 
-export function deriveNpmStatus(isUpToDate: boolean, dryRun: boolean): NpmPackageStatus {
+export function deriveNpmStatus(isUpToDate: boolean, dryRun: boolean): PublishStatus {
     if (isUpToDate) {
-        return 'skipped-up-to-date';
+        return 'skipped';
     }
-    return dryRun ? 'would-publish-dry-run' : 'published';
+    return dryRun ? 'dry-run' : 'published';
 }
 
-export function deriveMarketplaceStatus(shouldPublish: boolean, dryRun: boolean): MarketplaceStatus {
+export function deriveMarketplaceStatus(shouldPublish: boolean, dryRun: boolean): PublishStatus {
     if (!shouldPublish) {
         return 'skipped';
     }
     return dryRun ? 'dry-run' : 'published';
 }
 
-const NPM_STATUS_LABELS: Record<NpmPackageStatus, string> = {
+const STATUS_LABELS: Record<PublishStatus, string> = {
     published: '✅ Published',
-    'skipped-up-to-date': '⏭️ Up to date',
-    'would-publish-dry-run': '🔍 Would publish'
+    skipped: '➖ Up to date',
+    'dry-run': '🟡 Would publish'
 };
 
-const MARKETPLACE_STATUS_LABELS: Record<MarketplaceStatus, string> = {
-    published: '✅',
-    skipped: '⏭️',
-    'dry-run': '🔍'
-};
-
-function extensionColumn(version: string, status: MarketplaceStatus): string {
-    return `${version} → ${MARKETPLACE_STATUS_LABELS[status]}`;
+function extensionColumn(version: string, status: PublishStatus): string {
+    return `${version} → ${STATUS_LABELS[status]}`;
 }
 
 export async function renderSummary(summary: PublishSummary): Promise<void> {
@@ -84,13 +77,7 @@ export async function renderSummary(summary: PublishSummary): Promise<void> {
                 { data: 'Local', header: true },
                 { data: 'Status', header: true }
             ],
-            ...summary.npmPackages.map((p) => [
-                p.projectName,
-                p.packagePath,
-                p.publishedVersion,
-                p.localVersion,
-                NPM_STATUS_LABELS[p.status]
-            ])
+            ...summary.npmPackages.map((p) => [p.projectName, p.packagePath, p.publishedVersion, p.localVersion, STATUS_LABELS[p.status]])
         ]);
     }
 
