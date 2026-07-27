@@ -8,6 +8,7 @@ import { execFile, ExecFileException, execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { compare, parse, SemVer } from 'semver';
+import { deriveMarketplaceStatus, deriveNpmStatus, ExtensionResult, PublishSummary } from './summary.js';
 
 export type PublishOptions = {
     npmPackages: string[];
@@ -67,7 +68,7 @@ export type NpmDistTags = {
     tag?: string;
 };
 
-export async function publishPackages(opts: PublishOptions): Promise<void> {
+export async function publishPackages(opts: PublishOptions): Promise<PublishSummary> {
     const { npmPackages, vscodePackages, dryRun, npmTag, npmToken, vsceToken, ovsxToken, vsceVersion, ovsxVersion, verbose } = opts;
 
     if (dryRun) {
@@ -75,6 +76,7 @@ export async function publishPackages(opts: PublishOptions): Promise<void> {
     }
 
     let publishedAny = false;
+    const summary: PublishSummary = { dryRun, npmTag, npmPackages: [], extensions: [] };
 
     const publishPackageOptions: Array<PublishPackageOptions> = [];
     for (const packagePath of npmPackages) {
@@ -87,6 +89,14 @@ export async function publishPackages(opts: PublishOptions): Promise<void> {
             console.log(`Package at ${packagePath} has updates ${versions}. Adding to publish list.`);
             publishPackageOptions.push({ packagePublishInfo, packagePath, dryRun, npmTagOverride: npmTag, npmToken, verbose });
         }
+        summary.npmPackages.push({
+            projectName: packagePublishInfo.projectName,
+            packagePath,
+            localVersion: packagePublishInfo.version.version,
+            publishedVersion: packagePublishInfo.publishedVersion.version,
+            tag: packagePublishInfo.tag,
+            status: deriveNpmStatus(packagePublishInfo.isUpToDate, dryRun)
+        });
     }
     for (const publishPackageOption of publishPackageOptions) {
         const publishArgs = preparePublishPackage(publishPackageOption);
@@ -95,7 +105,7 @@ export async function publishPackages(opts: PublishOptions): Promise<void> {
     }
 
     for (const extPath of vscodePackages) {
-        const published = await publishExtension({
+        const extensionResult = await publishExtension({
             packagePath: extPath,
             dryRun,
             vsceToken,
@@ -103,14 +113,17 @@ export async function publishPackages(opts: PublishOptions): Promise<void> {
             vsceCliVersion: vsceVersion,
             ovsxCliVersion: ovsxVersion
         });
-        if (published) {
+        if (extensionResult.vsce !== 'skipped' || extensionResult.ovsx !== 'skipped') {
             publishedAny = true;
         }
+        summary.extensions.push(extensionResult);
     }
 
     if (!publishedAny) {
         console.log('All packages are up to date. Nothing to publish.');
     }
+
+    return summary;
 }
 
 /**
@@ -279,7 +292,7 @@ export function printExecFileException(error: ExecFileException, stdout: string,
     return errorLog;
 }
 
-async function publishExtension(options: PublishExtensionOptions): Promise<boolean> {
+async function publishExtension(options: PublishExtensionOptions): Promise<ExtensionResult> {
     const { packagePath, dryRun, vsceToken, ovsxToken, vsceCliVersion, ovsxCliVersion } = options;
     const { name, publisher, version } = await readPackageJson(packagePath);
     const id = `${publisher}.${name}`;
@@ -314,7 +327,15 @@ async function publishExtension(options: PublishExtensionOptions): Promise<boole
         console.log(`OVSX extension ${id} is up to date. Skipping publish.`);
     }
 
-    return shouldPublishVsce || shouldPublishOvsx;
+    return {
+        id,
+        packagePath,
+        localVersion: version,
+        vsceVersion,
+        ovsxVersion,
+        vsce: deriveMarketplaceStatus(shouldPublishVsce, dryRun),
+        ovsx: deriveMarketplaceStatus(shouldPublishOvsx, dryRun)
+    };
 }
 
 async function getVsceVersion(versionDefinition: VersionDefinition): Promise<string> {

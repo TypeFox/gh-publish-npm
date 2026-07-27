@@ -6,6 +6,7 @@
 
 import * as core from '@actions/core';
 import { PublishOptions, publishPackages } from './publish.js';
+import { renderSummary } from './summary.js';
 
 function parseList(input: string): string[] {
     return input
@@ -63,7 +64,8 @@ async function run(): Promise<void> {
     }
 
     try {
-        await publishPackages(publishOptions);
+        const summary = await publishPackages(publishOptions);
+        await renderSummary(summary);
     } catch (error) {
         core.setFailed(error instanceof Error ? error.message : String(error));
     }
